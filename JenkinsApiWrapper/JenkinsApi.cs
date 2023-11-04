@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -292,6 +293,97 @@ namespace JenkinsApiWrapper
             var stopUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/{lastBuiltNumber}/stop";
             response = await client.PostAsync(stopUrl, null);
             EvaluateResponseMessage(response, "Stopping job encountered a problem: ");
+        }
+
+        public enum BuildStatus
+        {
+            UNDEFINED,
+            ABORTED,
+            FAILED,
+            STABLE,
+            SUCCESSFUL,
+            UNSTABLE
+        }
+
+        public class JobBuild
+        {
+            public BuildStatus Status { get; set; }
+            public string ConsoleText { get; set; }
+
+            public JobBuild()
+            {
+
+            }
+
+            public JobBuild(BuildStatus status, string consoleText)
+            {
+                Status = status;
+                ConsoleText = consoleText;
+            }
+
+            public JobBuild(BuildStatus status)
+            {
+                Status = status;
+            }
+        }
+
+
+        /// <summary>
+        /// Returns last build status, and console output.
+        /// </summary>
+        /// <param name="fullProjectName"></param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        /// <exception cref="JenkinsNetException"></exception>
+        public async Task<JobBuild> GetLastBuildStatus(string fullProjectName, TimeSpan timeout)
+        {
+            var (folderPath, jobName) = await CheckProject(fullProjectName);
+
+            using var client = new HttpClient();
+            await AuthorizeJenkins(client);
+
+            var stopWatch = Stopwatch.StartNew();
+            var inProgress = true;
+            XDocument xDocument = null;
+            do
+            {
+                var apiUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/lastBuild/api/xml";
+                var response = await client.GetAsync(apiUrl);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return new JobBuild(BuildStatus.UNDEFINED);
+                }
+                var lastBuildDetails = await response.Content.ReadAsStringAsync();
+                xDocument = XDocument.Parse(lastBuildDetails);
+                inProgress = bool.Parse(xDocument.Document.XPathSelectElement("workflowRun/inProgress").Value);
+                if (inProgress)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(30));
+                }
+            } while (inProgress && stopWatch.Elapsed < timeout);
+
+            if (stopWatch.Elapsed > timeout)
+            {
+                throw new JenkinsNetException("Reading last build status encountered a problem: Timeout occured!");
+            }
+
+            var result = xDocument.Document.XPathSelectElement("workflowRun/result").Value;
+            var lastBuildStatus = BuildStatus.UNDEFINED;
+            lastBuildStatus = result switch
+            {
+                "ABORTED" => BuildStatus.ABORTED,
+                "FAILURE" => BuildStatus.FAILED,
+                "STABLE" => BuildStatus.STABLE,
+                "SUCCESS" => BuildStatus.SUCCESSFUL,
+                "UNSTABLE" => BuildStatus.UNSTABLE,
+                _ => BuildStatus.UNDEFINED,
+            };
+
+            var apiUrl2 = $"{BaseUrl}/{folderPath}/job/{jobName}/lastBuild/consoleText";
+            var response2 = await client.GetAsync(apiUrl2);
+            var consoleText = await response2.Content.ReadAsStringAsync();
+
+            return new JobBuild(lastBuildStatus, consoleText);
         }
 
         /// <summary>

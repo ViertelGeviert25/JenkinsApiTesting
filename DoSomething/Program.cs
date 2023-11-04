@@ -13,7 +13,11 @@ namespace DoSomething
             for (int i = 0; i < 10; i++)
             {
                 Console.WriteLine(i);
-                System.Threading.Thread.Sleep(2000);
+                System.Threading.Thread.Sleep(200);
+                if (i == 6)
+                {
+                    throw new Exception("intended");
+                }
                 //Task.Delay(TimeSpan.FromMilliseconds(200)).Wait();
             }
         }

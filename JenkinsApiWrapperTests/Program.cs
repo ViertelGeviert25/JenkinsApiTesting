@@ -1,6 +1,7 @@
 ﻿using JenkinsApiWrapper;
 using System;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 
 namespace JenkinsApiWrapperTests
@@ -60,7 +61,6 @@ namespace JenkinsApiWrapperTests
                 var jobName = "wuseldusel/dummy scm";
                 await jenkins.CreatePipelineProjectFromScm(jobName, "https://github.com/ViertelGeviert25/JenkinsApiTesting", "*/master", "jenkinsfile.groovy");
             }
-
             catch (JenkinsNetException ex)
             {
                 Console.WriteLine(ex.Message);
@@ -213,11 +213,32 @@ namespace JenkinsApiWrapperTests
             }
         }
 
+        public static async void TestGetLastBuildStatus()
+        {
+            try
+            {
+                var stopWatch = Stopwatch.StartNew();
+                var jenkins = new JenkinsApi(CS_JENKINS_BASE_URL, CS_JENKINS_USERNAME, CS_JENKINS_API_TOKEN);
+                var lastBuildStatus = await jenkins.GetLastBuildStatus("wuseldusel/dummy scm", TimeSpan.FromMinutes(1));
+                Console.WriteLine(lastBuildStatus.Status);
+                Console.WriteLine(stopWatch.ElapsedMilliseconds);
+                stopWatch.Stop();
+            }
+            catch (JenkinsNetException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
         public static void Main(string[] args)
         {
-    
             //TestCreatePipelineProjectFromScm();
-            TestTriggerJob();
+            //TestTriggerJob();
+            TestGetLastBuildStatus();
 
             Console.WriteLine("Done.");
             Console.ReadKey();

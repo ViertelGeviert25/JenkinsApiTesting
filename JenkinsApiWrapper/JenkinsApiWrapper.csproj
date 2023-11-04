@@ -47,6 +47,7 @@
   <ItemGroup>
     <Compile Include="JenkinsApi.cs" />
     <Compile Include="JenkinsNetException.cs" />
+    <Compile Include="JobBuild.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

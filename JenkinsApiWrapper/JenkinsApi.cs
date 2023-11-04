@@ -152,7 +152,7 @@ namespace JenkinsApiWrapper
         /// <summary>
         /// Creates a new pipeline project from SCM.
         /// </summary>
-        /// <param name="fullProjectName">The full project name</param>
+        /// <param name="fullProjectName">The full project name. Ensure job folders already exist, otherwise an exception will be thrown.</param>
         /// <param name="repositoryUrl">Repository URL</param>
         /// <param name="branchSpec">Branch specification, e.g. */master</param>
         /// <param name="scriptPath">The script path, e.g. Jenkinsfile</param>
@@ -294,39 +294,6 @@ namespace JenkinsApiWrapper
             response = await client.PostAsync(stopUrl, null);
             EvaluateResponseMessage(response, "Stopping job encountered a problem: ");
         }
-
-        public enum BuildStatus
-        {
-            UNDEFINED,
-            ABORTED,
-            FAILED,
-            STABLE,
-            SUCCESSFUL,
-            UNSTABLE
-        }
-
-        public class JobBuild
-        {
-            public BuildStatus Status { get; set; }
-            public string ConsoleText { get; set; }
-
-            public JobBuild()
-            {
-
-            }
-
-            public JobBuild(BuildStatus status, string consoleText)
-            {
-                Status = status;
-                ConsoleText = consoleText;
-            }
-
-            public JobBuild(BuildStatus status)
-            {
-                Status = status;
-            }
-        }
-
 
         /// <summary>
         /// Returns last build status, and console output.
@@ -582,7 +549,7 @@ namespace JenkinsApiWrapper
         /// <param name="port">port</param>
         /// <param name="timeout">timeout</param>
         /// <returns></returns>
-        public static bool Ping(string host, int port, TimeSpan timeout)
+        private static bool Ping(string host, int port, TimeSpan timeout)
         {
             using var tcp = new TcpClient();
             var result = tcp.BeginConnect(host, port, null, null);
@@ -615,7 +582,7 @@ namespace JenkinsApiWrapper
         /// </summary>
         /// <param name="spec">a (legal) spec</param>
         /// <returns>a similar spec that uses a hash, if such a transformation is necessary; null if it is OK as is</returns>
-        public static string HashifyCrontabSpec(string spec)
+        private static string HashifyCrontabSpec(string spec)
         {
             if (string.IsNullOrEmpty(spec))
                 return null;

@@ -112,7 +112,7 @@ namespace JenkinsApiWrapperTests
             try
             {
                 var jenkins = new JenkinsApi(CS_JENKINS_BASE_URL, CS_JENKINS_USERNAME, CS_JENKINS_API_TOKEN);
-                await jenkins.SetCrontabSpecification("wuseldusel/dummy", "0 0 1,13 1-11 *");
+                await jenkins.SetCrontabSpecification("wuseldusel/dummy scm", "0 0 1,13 1-11 *");
 
                 // expectation: H 0 1,12 1-11 *
             }
@@ -238,7 +238,9 @@ namespace JenkinsApiWrapperTests
         {
             //TestCreatePipelineProjectFromScm();
             //TestTriggerJob();
-            TestGetLastBuildStatus();
+            //TestGetLastBuildStatus();
+            //TestScheduleCronJob();
+
 
             Console.WriteLine("Done.");
             Console.ReadKey();

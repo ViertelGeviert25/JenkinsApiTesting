@@ -240,17 +240,15 @@ namespace JenkinsApiWrapper
             using var client = new HttpClient();
             await AuthorizeJenkins(client);
 
-            if (parameters == null)
-            {
-                parameters = new Dictionary<string, object>();
-            }
+            FormUrlEncodedContent formContent = null;
 
-            var queries = new List<KeyValuePair<string, string>>();
-            foreach (var parameter in parameters)
+            if (parameters != null)
             {
-                queries.Add(new KeyValuePair<string, string>(parameter.Key, parameter.Value.ToString()));
+                var queries = new List<KeyValuePair<string, string>>();
+                foreach (var parameter in parameters)
+                    queries.Add(new KeyValuePair<string, string>(parameter.Key, parameter.Value.ToString()));
+                formContent = new FormUrlEncodedContent(queries);
             }
-            var formContent = new FormUrlEncodedContent(queries);
 
             var apiUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/buildWithParameters?delay=0sec";
             var response = await client.PostAsync(apiUrl, formContent);
@@ -351,22 +349,16 @@ namespace JenkinsApiWrapper
                 var apiUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/lastBuild/api/xml";
                 var response = await client.GetAsync(apiUrl);
                 if (!response.IsSuccessStatusCode)
-                {
                     return new JobBuild(BuildStatus.UNDEFINED);
-                }
+
                 var lastBuildDetails = await response.Content.ReadAsStringAsync();
                 xDocument = XDocument.Parse(lastBuildDetails);
                 inProgress = bool.Parse(xDocument.Document.XPathSelectElement("workflowRun/inProgress").Value);
-                if (inProgress)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(30));
-                }
+                if (inProgress) await Task.Delay(TimeSpan.FromSeconds(30));
             } while (inProgress && stopWatch.Elapsed < timeout);
 
             if (stopWatch.Elapsed > timeout)
-            {
                 throw new JenkinsNetException("Reading last build status encountered a problem: Timeout occured!");
-            }
 
             var result = xDocument.Document.XPathSelectElement("workflowRun/result").Value;
             var lastBuildStatus = BuildStatus.UNDEFINED;
@@ -466,13 +458,9 @@ namespace JenkinsApiWrapper
             var curLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string templateXmlConfigFilePath = null;
             if (pipelineDef == PipelineDefinition.PipelineScript)
-            {
                 templateXmlConfigFilePath = Path.Combine(curLocation, "job.item.xml");
-            }
             if (pipelineDef == PipelineDefinition.PipelineScriptFromScm)
-            {
                 templateXmlConfigFilePath = Path.Combine(curLocation, "job.item-scm.xml");
-            }
 
             if (!File.Exists(templateXmlConfigFilePath))
                 throw new FileNotFoundException("Template Jenkins config file not found!");
@@ -484,13 +472,9 @@ namespace JenkinsApiWrapper
             SetParametersDefinitionProperty(configNode, jobProperties.Parameters);
 
             if (pipelineDef == PipelineDefinition.PipelineScript)
-            {
                 SetPipelineScript(configNode, pipelineScript);
-            }
             if (pipelineDef == PipelineDefinition.PipelineScriptFromScm)
-            {
                 SetPipelineScriptFromScm(configNode, repositoryUrl, branchSpec, scriptPath);
-            }
 
             return configNode;
         }
@@ -590,17 +574,21 @@ namespace JenkinsApiWrapper
         /// <param name="pipelineScript">The pipeline script</param>
         private static void SetPipelineScript(XDocument jobConfigNode, string pipelineScript)
         {
-            var scriptElement = jobConfigNode.Document.XPathSelectElement("flow-definition/definition/script");
+            const string flowDefinitionScriptNode = "flow-definition/definition/script";
+            var scriptElement = jobConfigNode.Document.XPathSelectElement(flowDefinitionScriptNode);
             scriptElement?.SetValue(pipelineScript);
         }
 
         private static void SetPipelineScriptFromScm(XDocument jobConfigNode, string repositoryUrl, string branchSpec, string scriptPath)
         {
-            var repositoryUrlElement = jobConfigNode.Document.XPathSelectElement("flow-definition/definition/scm/userRemoteConfigs/hudson.plugins.git.UserRemoteConfig/url");
+            const string urlNode = "flow-definition/definition/scm/userRemoteConfigs/hudson.plugins.git.UserRemoteConfig/url";
+            const string nameNode = "flow-definition/definition/scm/branches/hudson.plugins.git.BranchSpec/name";
+            const string scriptPathNode = "flow-definition/definition/scriptPath";
+            var repositoryUrlElement = jobConfigNode.Document.XPathSelectElement(urlNode);
             repositoryUrlElement?.SetValue(repositoryUrl);
-            var branchSpecElement = jobConfigNode.Document.XPathSelectElement("flow-definition/definition/scm/branches/hudson.plugins.git.BranchSpec/name");
+            var branchSpecElement = jobConfigNode.Document.XPathSelectElement(nameNode);
             branchSpecElement?.SetValue(branchSpec);
-            var scriptPathElement = jobConfigNode.Document.XPathSelectElement("flow-definition/definition/scriptPath");
+            var scriptPathElement = jobConfigNode.Document.XPathSelectElement(scriptPathNode);
             scriptPathElement?.SetValue(scriptPath);
         }
 

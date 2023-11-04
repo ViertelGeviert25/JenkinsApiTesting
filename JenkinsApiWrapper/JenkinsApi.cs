@@ -169,6 +169,12 @@ namespace JenkinsApiWrapper
             return jobDescription;
         }
 
+        /// <summary>
+        /// Updates project description.
+        /// </summary>
+        /// <param name="fullProjectName">The project's full name.</param>
+        /// <param name="description">The new project description.</param>
+        /// <returns></returns>
         public async Task UpdateProjectDescription(string fullProjectName, string description)
         {
             var (folderPath, jobName) = await CheckProject(fullProjectName);
@@ -221,6 +227,12 @@ namespace JenkinsApiWrapper
             EvaluateResponseMessage(response, $"Triggering job '{fullProjectName}' encountered a problem: ");
         }
 
+        /// <summary>
+        /// Builds Jenkins Job with parameters.
+        /// </summary>
+        /// <param name="fullProjectName">The project's full name.</param>
+        /// <param name="parameters">Custom Parameter values. If null, default values are used.</param>
+        /// <returns></returns>
         public async Task BuildProjectWithParameters(string fullProjectName, Dictionary<string, object> parameters)
         {
             var (folderPath, jobName) = await CheckProject(fullProjectName);
@@ -232,13 +244,26 @@ namespace JenkinsApiWrapper
             {
                 parameters = new Dictionary<string, object>();
             }
-            parameters.Add("delay", "0sec");
-            var queryString = BuildQuerystring(parameters);
-            var apiUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/buildWithParameters{queryString}";
-            var response = await client.PostAsync(apiUrl, null);
+
+            var queries = new List<KeyValuePair<string, string>>();
+            foreach (var parameter in parameters)
+            {
+                var formData = new KeyValuePair<string, string>(parameter.Key, parameter.Value.ToString());
+                queries.Add(formData);
+            }
+            var formContent = new FormUrlEncodedContent(queries);
+            var xx = await formContent.ReadAsStringAsync();
+
+            var apiUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/buildWithParameters?delay=0sec";
+            var response = await client.PostAsync(apiUrl, formContent);
             EvaluateResponseMessage(response, $"Triggering job '{fullProjectName}' with parameters encountered a problem: ");
         }
 
+        /// <summary>
+        /// Build Jenkins job with parameters. Default values are used.
+        /// </summary>
+        /// <param name="fullProjectName">The project's full name.</param>
+        /// <returns></returns>
         public async Task BuildProjectWithParameters(string fullProjectName)
         {
             await BuildProjectWithParameters(fullProjectName, null);
@@ -675,21 +700,6 @@ namespace JenkinsApiWrapper
         private static string RemoveXmlDeclaration(string xml)
         {
             return Regex.Replace(xml, @"<\?xml[^\>]*\?>", string.Empty);
-        }
-
-        /// <summary>
-        /// Method to build the query string from the dictionary object
-        /// </summary>
-        /// <param name="querystringParams">query string parameters</param>
-        /// <returns>string value</returns>
-        private static string BuildQuerystring(Dictionary<string, object> querystringParams)
-        {
-            List<string> paramList = new List<string>();
-            foreach (var parameter in querystringParams)
-            {
-                paramList.Add(parameter.Key + "=" + parameter.Value);
-            }
-            return "?" + string.Join("&", paramList);
         }
 
         /// <summary>

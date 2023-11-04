@@ -133,20 +133,14 @@ namespace JenkinsApiWrapper
         /// </summary>
         /// <param name="fullProjectName">The full project name.</param>
         /// <param name="pipelineScript">The pipeline script.</param>
-        /// <param name="cronExpression">A crontab expression. Will be optimizied internally. If null, no trigger is set.</param>
+        /// <param name="jobProperties"></param>
         /// <returns></returns>
         /// <exception cref="JenkinsNetException"></exception>
         /// <exception cref="FileNotFoundException"></exception>
         /// <exception cref="ArgumentException"></exception>
-        public async Task CreatePipelineProject(string fullProjectName, string pipelineScript, string cronExpression = null)
+        public async Task CreatePipelineProject(string fullProjectName, string pipelineScript, JenkinsJobProperties jobProperties)
         {
-            await CreateJob(fullProjectName, () =>
-            {
-                var jobTemplateConfig = GetJobTemplateConfig(PipelineDefinition.PipelineScript);
-                SetCrontabSpec(jobTemplateConfig, cronExpression);
-                SetPipelineScript(jobTemplateConfig, pipelineScript);
-                return jobTemplateConfig;
-            });
+            await CreateJob(fullProjectName, () => GenerateJobConfiguration(PipelineDefinition.PipelineScript, jobProperties, pipelineScript, null, null, null));
         }
 
         /// <summary>
@@ -154,22 +148,16 @@ namespace JenkinsApiWrapper
         /// </summary>
         /// <param name="fullProjectName">The full project name. Ensure job folders already exist, otherwise an exception will be thrown.</param>
         /// <param name="repositoryUrl">Repository URL</param>
+        /// <param name="jobProperties"></param>
         /// <param name="branchSpec">Branch specification, e.g. */master</param>
         /// <param name="scriptPath">The script path, e.g. Jenkinsfile</param>
-        /// <param name="cronExpression">A crontab expression. Will be optimized internally. If null, no trigger is set.</param>
         /// <returns></returns>
-        public async Task CreatePipelineProjectFromScm(string fullProjectName, string repositoryUrl, string branchSpec = "*/master", string scriptPath = "Jenkinsfile", string cronExpression = null)
+        public async Task CreatePipelineProjectFromScm(string fullProjectName, string repositoryUrl, JenkinsJobProperties jobProperties, string branchSpec = "*/master", string scriptPath = "Jenkinsfile")
         {
-            await CreateJob(fullProjectName, () =>
-            {
-                var jobTemplateConfig = GetJobTemplateConfig(PipelineDefinition.PipelineScriptFromScm);
-                SetCrontabSpec(jobTemplateConfig, cronExpression);
-                SetPipelineScriptFromScm(jobTemplateConfig, repositoryUrl, branchSpec, scriptPath);
-                return jobTemplateConfig;
-            });
+            await CreateJob(fullProjectName, () => GenerateJobConfiguration(PipelineDefinition.PipelineScriptFromScm, jobProperties, null, repositoryUrl, branchSpec, scriptPath));
         }
 
-        public async Task<string> GetJobDescription(string fullProjectName)
+        public async Task<string> GetProjectDescription(string fullProjectName)
         {
             var (folderPath, jobName) = await CheckProject(fullProjectName);
 
@@ -181,7 +169,7 @@ namespace JenkinsApiWrapper
             return jobDescription;
         }
 
-        public async Task UpdateJobDescription(string fullProjectName, string description)
+        public async Task UpdateProjectDescription(string fullProjectName, string description)
         {
             var (folderPath, jobName) = await CheckProject(fullProjectName);
 
@@ -221,7 +209,7 @@ namespace JenkinsApiWrapper
         /// <returns></returns>
         /// <exception cref="JenkinsNetException"></exception>
         /// <exception cref="ArgumentException"></exception>
-        public async Task TriggerJob(string fullProjectName)
+        public async Task BuildProject(string fullProjectName)
         {
             var (folderPath, jobName) = await CheckProject(fullProjectName);
 
@@ -231,6 +219,29 @@ namespace JenkinsApiWrapper
             var apiUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/build?delay=0sec";
             var response = await client.PostAsync(apiUrl, null);
             EvaluateResponseMessage(response, $"Triggering job '{fullProjectName}' encountered a problem: ");
+        }
+
+        public async Task BuildProjectWithParameters(string fullProjectName, Dictionary<string, object> parameters)
+        {
+            var (folderPath, jobName) = await CheckProject(fullProjectName);
+
+            using var client = new HttpClient();
+            await AuthorizeJenkins(client);
+
+            if (parameters == null)
+            {
+                parameters = new Dictionary<string, object>();
+            }
+            parameters.Add("delay", "0sec");
+            var queryString = BuildQuerystring(parameters);
+            var apiUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/buildWithParameters{queryString}";
+            var response = await client.PostAsync(apiUrl, null);
+            EvaluateResponseMessage(response, $"Triggering job '{fullProjectName}' with parameters encountered a problem: ");
+        }
+
+        public async Task BuildProjectWithParameters(string fullProjectName)
+        {
+            await BuildProjectWithParameters(fullProjectName, null);
         }
 
         /// <summary>
@@ -398,19 +409,6 @@ namespace JenkinsApiWrapper
         }
 
         /// <summary>
-        /// Generates string content by XML document object.
-        /// </summary>
-        /// <param name="xmlDoc">The XML document</param>
-        /// <returns>Returns string content for HTTP requests.</returns>
-        private static StringContent GenerateStringContent(XDocument xmlDoc)
-        {
-            var xml = xmlDoc.Document.ToString();
-            var content = new StringContent(xml);
-            content.Headers.ContentType = new MediaTypeHeaderValue("text/xml");
-            return content;
-        }
-
-        /// <summary>
         /// Evaluates HTTP response message object.
         /// </summary>
         /// <param name="response">The response message object.</param>
@@ -439,28 +437,69 @@ namespace JenkinsApiWrapper
         /// </summary>
         /// <returns>XML document representing the project template configuration.</returns>
         /// <exception cref="FileNotFoundException"></exception>
-        private static XDocument GetJobTemplateConfig(PipelineDefinition pipelineDef)
+        private static XDocument GenerateJobConfiguration(PipelineDefinition pipelineDef, JenkinsJobProperties jobProperties, string pipelineScript, string repositoryUrl, string branchSpec, string scriptPath)
         {
             // fyi: need to set file to "Copy always to output"
             var curLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string templateXmlConfigFilePath;
+            string templateXmlConfigFilePath = null;
             if (pipelineDef == PipelineDefinition.PipelineScript)
             {
                 templateXmlConfigFilePath = Path.Combine(curLocation, "job.item.xml");
             }
-            else if (pipelineDef == PipelineDefinition.PipelineScriptFromScm)
+            if (pipelineDef == PipelineDefinition.PipelineScriptFromScm)
             {
                 templateXmlConfigFilePath = Path.Combine(curLocation, "job.item-scm.xml");
-            }
-            else
-            {
-                throw new ArgumentException("Invalid paramter value");
             }
 
             if (!File.Exists(templateXmlConfigFilePath))
                 throw new FileNotFoundException("Template Jenkins config file not found!");
 
-            return XDocument.Load(templateXmlConfigFilePath);
+            var configNode = XDocument.Load(templateXmlConfigFilePath);
+
+            SetCrontabSpec(configNode, jobProperties.CrontabSpecification);
+            SetBuildDiscarderProperty(configNode, jobProperties.DaysToKeepLogs, jobProperties.NumToKeepLogs, jobProperties.ArtifactDaysToKeepLogs, jobProperties.ArtifactNumToKeepLogs);
+            SetParametersDefinitionProperty(configNode, jobProperties.Parameters);
+
+            if (pipelineDef == PipelineDefinition.PipelineScript)
+            {
+                SetPipelineScript(configNode, pipelineScript);
+            }
+            if (pipelineDef == PipelineDefinition.PipelineScriptFromScm)
+            {
+                SetPipelineScriptFromScm(configNode, repositoryUrl, branchSpec, scriptPath);
+            }
+
+            return configNode;
+        }
+
+        private static void SetParametersDefinitionProperty(XDocument jobConfigNode, Dictionary<string, object> parameters)
+        {
+            var paramDefinitionElement = new XElement("parameterDefinitions");
+            foreach (var parameter in parameters)
+            {
+                var nameElement = new XElement("name", parameter.Key);
+                var defaultValueElement = new XElement("defaultValue", parameter.Value);
+                var trimElement = new XElement("trim", "false");
+                var stringParameterDefinitionElement = new XElement("hudson.model.StringParameterDefinition", nameElement, defaultValueElement, trimElement);
+                paramDefinitionElement.Add(stringParameterDefinitionElement);
+            }
+            var parametersDefinitionPropertyElement = new XElement("hudson.model.ParametersDefinitionProperty", paramDefinitionElement);
+            var propertiesElement = jobConfigNode.Document.Descendants("properties").FirstOrDefault();
+            propertiesElement.Add(parametersDefinitionPropertyElement);
+        }
+
+        private static void SetBuildDiscarderProperty(XDocument jobConfigNode, int daysToKeep, int numToKeep, int artifactDaysToKeep, int artifactNumToKeep)
+        {
+            var daysToKeepElement = new XElement("daysToKeep", daysToKeep);
+            var numToKeepElement = new XElement("numToKeep", numToKeep);
+            var artifactDaysToKeepElement = new XElement("artifactDaysToKeep", artifactDaysToKeep);
+            var artifactNumToKeepElement = new XElement("artifactNumToKeep", artifactNumToKeep);
+            var strategyElement = new XElement("strategy", daysToKeepElement, numToKeepElement, artifactDaysToKeepElement, artifactNumToKeepElement, new XAttribute("class", "hudson.tasks.LogRotator"));
+            var buildDiscarderProperty = new XElement("jenkins.model.BuildDiscarderProperty", strategyElement);
+            var propertiesElement = jobConfigNode.Document
+                .Descendants("properties")
+                .FirstOrDefault();
+            propertiesElement.Add(buildDiscarderProperty);
         }
 
         /// <summary>
@@ -636,6 +675,34 @@ namespace JenkinsApiWrapper
         private static string RemoveXmlDeclaration(string xml)
         {
             return Regex.Replace(xml, @"<\?xml[^\>]*\?>", string.Empty);
+        }
+
+        /// <summary>
+        /// Method to build the query string from the dictionary object
+        /// </summary>
+        /// <param name="querystringParams">query string parameters</param>
+        /// <returns>string value</returns>
+        private static string BuildQuerystring(Dictionary<string, object> querystringParams)
+        {
+            List<string> paramList = new List<string>();
+            foreach (var parameter in querystringParams)
+            {
+                paramList.Add(parameter.Key + "=" + parameter.Value);
+            }
+            return "?" + string.Join("&", paramList);
+        }
+
+        /// <summary>
+        /// Generates string content by XML document object.
+        /// </summary>
+        /// <param name="xmlDoc">The XML document</param>
+        /// <returns>Returns string content for HTTP requests.</returns>
+        private static StringContent GenerateStringContent(XDocument xmlDoc)
+        {
+            var xml = xmlDoc.Document.ToString();
+            var content = new StringContent(xml);
+            content.Headers.ContentType = new MediaTypeHeaderValue("text/xml");
+            return content;
         }
     }
 }

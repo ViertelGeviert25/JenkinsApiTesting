@@ -1,5 +1,6 @@
 ﻿using JenkinsApiWrapper;
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
@@ -41,7 +42,11 @@ namespace JenkinsApiWrapperTests
     }}
 }}
 }}";
-                await jenkins.CreatePipelineProject(jobName, pipelineScript, "H H 1,4 1-11 *");
+                var jobProperties = new JenkinsJobProperties()
+                {
+                    CrontabSpecification = "H H 1,4 1-11 *"
+                };
+                await jenkins.CreatePipelineProject(jobName, pipelineScript, jobProperties);
             }
             catch (JenkinsNetException ex)
             {
@@ -58,8 +63,19 @@ namespace JenkinsApiWrapperTests
             try
             {
                 var jenkins = new JenkinsApi(CS_JENKINS_BASE_URL, CS_JENKINS_USERNAME, CS_JENKINS_API_TOKEN);
-                var jobName = "wuseldusel/dummy scm";
-                await jenkins.CreatePipelineProjectFromScm(jobName, "https://github.com/ViertelGeviert25/JenkinsApiTesting", "*/master", "jenkinsfile.groovy");
+                var jobName = "wuseldusel/dummy";
+                var parameters = new Dictionary<string, object>
+                {
+                    { "TASK_ID", "abcd" }
+                };
+                var jobProperties = new JenkinsJobProperties()
+                {
+                    CrontabSpecification = "0 0 1,4 1-11 *",
+                    DaysToKeepLogs = 10,
+                    NumToKeepLogs = 5,
+                    Parameters = parameters
+                };
+                await jenkins.CreatePipelineProjectFromScm(jobName, "https://github.com/ViertelGeviert25/JenkinsApiTesting", jobProperties, "*/master", "jenkinsfile.groovy");
             }
             catch (JenkinsNetException ex)
             {
@@ -89,13 +105,35 @@ namespace JenkinsApiWrapperTests
             }
         }
 
-        public static async void TestTriggerJob()
+        public static async void TestBuildJob()
         {
             try
             {
                 var jenkins = new JenkinsApi(CS_JENKINS_BASE_URL, CS_JENKINS_USERNAME, CS_JENKINS_API_TOKEN);
                 var jobName = "wuseldusel/dummy scm";
-                await jenkins.TriggerJob(jobName);
+                await jenkins.BuildProject(jobName);
+            }
+            catch (JenkinsNetException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public static async void TestBuildJobWithParameters()
+        {
+            try
+            {
+                var jenkins = new JenkinsApi(CS_JENKINS_BASE_URL, CS_JENKINS_USERNAME, CS_JENKINS_API_TOKEN);
+                var jobName = "wuseldusel/dummy";
+                var parameters = new Dictionary<string, object>
+                {
+                    { "TASK_ID", "eeee" }
+                };
+                await jenkins.BuildProjectWithParameters(jobName, parameters);
             }
             catch (JenkinsNetException ex)
             {
@@ -165,7 +203,7 @@ namespace JenkinsApiWrapperTests
             try
             {
                 var jenkins = new JenkinsApi(CS_JENKINS_BASE_URL, CS_JENKINS_USERNAME, CS_JENKINS_API_TOKEN);
-                var jobDescription = await jenkins.GetJobDescription("wuseldusel/dummy");
+                var jobDescription = await jenkins.GetProjectDescription("wuseldusel/dummy");
                 Console.WriteLine(jobDescription);
             }
             catch (JenkinsNetException ex)
@@ -183,7 +221,7 @@ namespace JenkinsApiWrapperTests
             try
             {
                 var jenkins = new JenkinsApi(CS_JENKINS_BASE_URL, CS_JENKINS_USERNAME, CS_JENKINS_API_TOKEN);
-                await jenkins.UpdateJobDescription("wuseldusel/dummy", "my very important job description 2");
+                await jenkins.UpdateProjectDescription("wuseldusel/dummy", "my very important job description 2");
             }
             catch (JenkinsNetException ex)
             {
@@ -237,7 +275,8 @@ namespace JenkinsApiWrapperTests
         public static void Main(string[] args)
         {
             //TestCreatePipelineProjectFromScm();
-            //TestTriggerJob();
+            //TestCreatePipelineProjectFromScm();
+            TestBuildJobWithParameters();
             //TestGetLastBuildStatus();
             //TestScheduleCronJob();
 

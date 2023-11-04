@@ -248,11 +248,9 @@ namespace JenkinsApiWrapper
             var queries = new List<KeyValuePair<string, string>>();
             foreach (var parameter in parameters)
             {
-                var formData = new KeyValuePair<string, string>(parameter.Key, parameter.Value.ToString());
-                queries.Add(formData);
+                queries.Add(new KeyValuePair<string, string>(parameter.Key, parameter.Value.ToString()));
             }
             var formContent = new FormUrlEncodedContent(queries);
-            var xx = await formContent.ReadAsStringAsync();
 
             var apiUrl = $"{BaseUrl}/{folderPath}/job/{jobName}/buildWithParameters?delay=0sec";
             var response = await client.PostAsync(apiUrl, formContent);

@@ -14,10 +14,10 @@ namespace DoSomething
             {
                 Console.WriteLine(i);
                 System.Threading.Thread.Sleep(200);
-                if (i == 6)
-                {
-                    throw new Exception("intended");
-                }
+                //if (i == 6)
+                //{
+                //    throw new Exception("intended");
+                //}
                 //Task.Delay(TimeSpan.FromMilliseconds(200)).Wait();
             }
         }

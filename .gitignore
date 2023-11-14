@@ -365,3 +365,4 @@ FodyWeavers.xsd
 
 scrt.txt
 /JenkinsApiWrapperTests/App.config
+/MonitoringTests

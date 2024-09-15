@@ -14,7 +14,7 @@ def countCharacter(input, character) {
 
 def sortList(input, sep) {
     input.sort { str1, str2 ->
-        str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
+        return str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
     }
     return input
 }

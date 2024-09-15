@@ -46,7 +46,7 @@ def generateStage(taskId, pagent) {
 
                     while (retryCount <= maxRetries && !success) {
                         int returnCode = bat(returnStatus: true, script: """
-                            ""H:\\tools\\runnerdemo\\Runner.exe"" --taskId=${taskId} --retry=${retryCount}
+                            ""H:\\dev\\JenkinsApiTesting\\Runner\\bin\\Release\\net8.0\\Runner.exe"" --taskId=${taskId} --retry=${retryCount}
                             echo Error level is %errorlevel%
                         """)
                         semaphoreMaxStages++

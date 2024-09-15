@@ -33,7 +33,8 @@
             var secs = random.Next(3, 15);
             Log($"taskid {taskId} waiting for {secs} seconds");
             //System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(5)).Wait(); 
-            System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(secs)).Wait();
+            //System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(secs)).Wait();
+            System.Threading.Thread.Sleep(TimeSpan.FromSeconds(secs));
             //}
 
             //var retry = cliArgs.FirstOrDefault(a => a.StartsWith("--retry="));

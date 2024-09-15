@@ -12,12 +12,12 @@ def countCharacter(input, character) {
     return count
 }
 
-def sortList(input, sep) {
-    input.sort { str1, str2 ->
-        return str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
-    }
-    return input
-}
+   static List sortList(input, sep) {
+      input.sort { str1, str2 ->
+         str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
+      }
+      return input
+   }
 
 
 def generateStage(taskId, pagent) {

@@ -14,14 +14,11 @@ def countCharacter(input, character) {
 
 def sortList(input, sep) {
     input.sort { str1, str2 ->
-        str1.count(sep) <=> str2.count(sep)
+        str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
     }
     return input
 }
-// def sortByCharOccurrence(List<String> list, char targetChar) {
-//     // Sort the list by the occurrence of the target character
-//     return list.sort { it.size() }
-// }
+
 
 def generateStage(taskId, pagent) {
     return {

@@ -97,6 +97,7 @@ pipeline {
                     }
                     stagesList = sortList(stagesList, sepChar)
                     stagesList.eachWithIndex { stage, index ->
+                        echo "task configured: " stage
                         String agent = agents[index % agentCount] // distribute stages on agent
 
                         int order = countCharacter(stage, sepChar)

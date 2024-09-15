@@ -12,13 +12,13 @@ def countCharacter(input, character) {
     return count
 }
 
-    @NonCPS
-    static List sortList(input, sep) {
-            input.toSorted { str1, str2 ->
-            str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
-        }
-        return input
+@NonCPS
+def List sortList(input, sep) {
+    input = input.sort { str1, str2 ->
+        str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
     }
+    return input
+}
 
 def generateStage(taskId, pagent) {
 

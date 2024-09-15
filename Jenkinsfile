@@ -21,9 +21,6 @@ def List sortList(input, sep) {
 }
 
 def generateStage(taskId, pagent) {
-
-
-
     return {
         script {
             // limit concurrency

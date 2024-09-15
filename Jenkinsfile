@@ -20,9 +20,11 @@ def sortList(input, sep) {
 }
 def sortByCharOccurrence(List<String> list, char targetChar) {
     // Sort the list by the occurrence of the target character
-    list.sort { a, b -> 
-        countChar(a, targetChar) <=> countChar(b, targetChar)
-    }
+    return list.collect { str -> 
+        [str, countChar(str, targetChar)] // Create a list with string and its count
+    }.sort { a, b -> 
+        a[1] <=> b[1] // Sort based on the count of occurrences (a[1], b[1] are counts)
+    }.collect { it[0] } // Extract the original strings after sorting
 }
 
 def countChar(String str, char targetChar) {
@@ -31,6 +33,7 @@ def countChar(String str, char targetChar) {
     str.each { if (it == targetChar) count++ }
     return count
 }
+
 
 def generateStage(taskId, pagent) {
     return {

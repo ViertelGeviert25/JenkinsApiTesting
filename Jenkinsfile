@@ -18,10 +18,10 @@ def sortList(input, sep) {
     }
     return input
 }
-def sortByCharOccurrence(List<String> list, char targetChar) {
-    // Sort the list by the occurrence of the target character
-    return list.sort { it.size() }
-}
+// def sortByCharOccurrence(List<String> list, char targetChar) {
+//     // Sort the list by the occurrence of the target character
+//     return list.sort { it.size() }
+// }
 
 def generateStage(taskId, pagent) {
     return {
@@ -98,7 +98,7 @@ pipeline {
                     if (stagesList.size() < 1) {
                         error('TASKIDS must be a comma-delimited list of applications to build')
                     }
-                    stagesList = sortByCharOccurrence(stagesList, sepChar)
+                    stagesList = sortList(stagesList, sepChar)
                     stagesList.eachWithIndex { stage, index ->
                         echo "task configured: ${stage}"
                         String agent = agents[index % agentCount] // distribute stages on agent

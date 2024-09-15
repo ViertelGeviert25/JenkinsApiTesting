@@ -12,9 +12,9 @@ def countCharacter(input, character) {
     return count
 }
 
-static List sortList(input, sep) {
+def sortList(input, sep) {
     input.sort { str1, str2 ->
-        str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
+        str1.count(sep) <=> str2.count(sep)
     }
     return input
 }

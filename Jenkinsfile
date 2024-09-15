@@ -13,7 +13,7 @@ def countCharacter(input, character) {
 }
 
    static List sortList(input, sep) {
-      input.sort { str1, str2 ->
+      input.toSorted { str1, str2 ->
          str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
       }
       return input

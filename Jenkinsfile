@@ -12,15 +12,18 @@ def countCharacter(input, character) {
     return count
 }
 
-   static List sortList(input, sep) {
-      input.toSorted { str1, str2 ->
-         str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
-      }
-      return input
-   }
 
 
 def generateStage(taskId, pagent) {
+
+    @NonCPS
+    static List sortList(input, sep) {
+            input.toSorted { str1, str2 ->
+            str1.tokenize(sep).size() <=> str2.tokenize(sep).size()
+        }
+        return input
+    }
+    
     return {
         script {
             // limit concurrency
